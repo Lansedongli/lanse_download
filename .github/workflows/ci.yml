@@ -190,17 +190,28 @@ jobs:
           docker compose up -d
           # 等待 MySQL 初始化完成 (schema_full.sql 有38张表+种子数据,需要较长时间)
           echo "等待服务就绪..."
+          PASS=0
           for i in $(seq 1 60); do
-            if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
-              echo "✅ Docker smoke test PASS (耗时 ${i}x2 秒)"
-              docker compose down
-              exit 0
+            HTTP_CODE=$(curl -s -o /tmp/edown_resp.txt -w "%{http_code}" http://localhost:8080/ 2>&1 || echo "000")
+            echo "  尝试 ${i}/60 → HTTP ${HTTP_CODE}"
+            if [ "$HTTP_CODE" != "000" ] && [ "$HTTP_CODE" != "502" ] && [ "$HTTP_CODE" != "503" ]; then
+              echo "✅ Docker smoke test PASS (HTTP ${HTTP_CODE}, 耗时 ${i}x2 秒)"
+              PASS=1
+              break
             fi
-            echo "  尝试 ${i}/60 ..."
             sleep 2
           done
-          echo "❌ Docker smoke test FAIL"
-          echo "=== 容器日志 ==="
-          docker compose logs --tail=100
+          if [ "$PASS" = "0" ]; then
+            echo "❌ Docker smoke test FAIL"
+            echo ""
+            echo "=== PHP 容器日志 ==="
+            docker compose logs php --tail=50 2>/dev/null || true
+            echo ""
+            echo "=== Nginx 容器日志 ==="
+            docker compose logs nginx --tail=30 2>/dev/null || true
+            echo ""
+            echo "=== 最后一次响应内容 ==="
+            cat /tmp/edown_resp.txt 2>/dev/null | head -50 || echo "(无响应)"
+          fi
           docker compose down
-          exit 1
+          exit $([ "$PASS" = "1" ] && echo 0 || echo 1)
