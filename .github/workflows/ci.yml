@@ -69,10 +69,11 @@ jobs:
           cat > .env << 'ENVEOF'
           APP_DEBUG=true
           DB_HOST=127.0.0.1
-          DB_NAME=empiredown_test
-          DB_USER=root
-          DB_PASS=root
+          DB_DATABASE=empiredown_test
+          DB_USERNAME=root
+          DB_PASSWORD=root
           DB_PORT=3306
+          DB_PREFIX=
           DB_CHARSET=utf8mb4
           JWT_SECRET=test_jwt_ci_secret_key_32chars
           JWT_TTL=7200
