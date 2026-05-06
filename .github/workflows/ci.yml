@@ -151,21 +151,29 @@ jobs:
         with:
           name: frontend-dist
 
+      - name: 安装 PHP 依赖
+        run: composer install --no-dev --no-progress --prefer-dist
+        working-directory: backend
+
       - name: 构建 Docker 镜像
         run: docker build -t edown:${GITHUB_SHA::7} -t edown:latest .
 
       - name: 冒烟测试
         run: |
           docker compose up -d
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:8080/ > /dev/null; then
-              echo "Docker smoke test PASS"
+          # 等待 MySQL 初始化完成 (schema_full.sql 有38张表+种子数据,需要较长时间)
+          echo "等待服务就绪..."
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8080/ > /dev/null 2>&1; then
+              echo "✅ Docker smoke test PASS (耗时 ${i}x2 秒)"
               docker compose down
               exit 0
             fi
+            echo "  尝试 ${i}/60 ..."
             sleep 2
           done
-          echo "Docker smoke test FAIL"
-          docker compose logs
+          echo "❌ Docker smoke test FAIL"
+          echo "=== 容器日志 ==="
+          docker compose logs --tail=100
           docker compose down
           exit 1
