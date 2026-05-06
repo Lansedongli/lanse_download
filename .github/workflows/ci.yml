@@ -62,7 +62,7 @@ jobs:
           done
 
       - name: 初始化测试数据库
-        run: mysql -h 127.0.0.1 -uroot -proot empiredown_test < docker/mysql/schema_full.sql
+        run: mysql -h 127.0.0.1 -uroot -proot empiredown_test < backend/docker/mysql/schema_full.sql
 
       - name: 配置 .env
         run: |
