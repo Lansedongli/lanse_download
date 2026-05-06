@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+use think\facade\Route;
+
 /**
  * 帝国下载系统 V3.0 — 路由映射
  *
@@ -10,3 +12,8 @@ declare(strict_types=1);
  *
  * 本文件保留作为兜底，不再注册任何路由。
  */
+
+// Docker 健康检查（不依赖数据库）
+Route::get('health', function () {
+    return json(['status' => 'ok', 'time' => date('c')]);
+});

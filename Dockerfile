@@ -45,7 +45,7 @@ RUN chown -R www-data:www-data /var/www/html
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/edown.ini
 
 # Supervisor 配置
-COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker/supervisord.conf /etc/supervisord.conf
 
 EXPOSE 9000
 
