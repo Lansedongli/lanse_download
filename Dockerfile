@@ -1,4 +1,4 @@
-FROM php:8.1-fpm
+FROM php:8.3-fpm
 
 # 基础依赖
 RUN apt-get update && apt-get install -y \
