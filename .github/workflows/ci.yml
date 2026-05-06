@@ -1,0 +1,158 @@
+name: 帝国下载系统 CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── 1. 代码质量 ──
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - run: composer install --no-progress --prefer-dist
+        working-directory: backend
+      - name: PHP 语法检查
+        run: find backend/app -name '*.php' -print0 | xargs -0 -n1 php -l
+
+  # ── 2. 单元测试 ──
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: empiredown_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring, curl, json
+
+      - name: 安装依赖
+        run: composer install --no-progress --prefer-dist
+        working-directory: backend
+
+      - name: 初始化测试数据库
+        run: mysql -h 127.0.0.1 -uroot -proot empiredown_test < docker/mysql/schema_full.sql
+
+      - name: 配置 .env 测试环境
+        run: |
+          cp .env.example .env 2>/dev/null || true
+          cat > .env << 'ENVEOF'
+          APP_DEBUG=true
+          DB_HOST=127.0.0.1
+          DB_NAME=empiredown_test
+          DB_USER=root
+          DB_PASS=root
+          DB_PORT=3306
+          DB_CHARSET=utf8mb4
+          JWT_SECRET=test_jwt_secret_ci_32chars_xx
+          JWT_TTL=7200
+          CACHE_DRIVER=file
+          ENVEOF
+        working-directory: backend
+
+      - name: 启动 PHP 开发服务器
+        run: |
+          php -S 0.0.0.0:8080 -t public > /tmp/php-server.log 2>&1 &
+          echo $! > /tmp/php-server.pid
+          # 等待服务器就绪
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:8080/ > /dev/null 2>&1; then
+              echo "PHP server ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+        working-directory: backend
+
+      - name: 运行 PHPUnit
+        run: |
+          php vendor/bin/phpunit --testdox --no-coverage
+        working-directory: backend
+
+      - name: 停止 PHP 服务器
+        if: always()
+        run: kill $(cat /tmp/php-server.pid) 2>/dev/null || true
+
+  # ── 3. 前端构建 ──
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            admin-frontend/package-lock.json
+            user-frontend/package-lock.json
+
+      - name: 构建管理端
+        run: |
+          npm ci
+          npm run build
+        working-directory: admin-frontend
+
+      - name: 构建用户端
+        run: |
+          npm ci
+          npm run build
+        working-directory: user-frontend
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: |
+            admin-frontend/dist/
+            user-frontend/dist/
+          retention-days: 7
+
+  # ── 4. Docker 镜像（仅 main 分支） ──
+  docker:
+    needs: [test, frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 下载前端构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+
+      - name: 构建 Docker 镜像
+        run: docker build -t edown:${GITHUB_SHA::7} -t edown:latest .
+
+      - name: 冒烟测试
+        run: |
+          docker compose up -d
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/ > /dev/null; then
+              echo "Docker smoke test PASS"
+              docker compose down
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Docker smoke test FAIL"
+          docker compose logs
+          docker compose down
+          exit 1

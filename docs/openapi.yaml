@@ -1,0 +1,491 @@
+openapi: "3.0.3"
+info:
+  title: 帝国下载系统 API
+  version: "3.0.0"
+  description: |
+    帝国下载系统 ThinkPHP 8 重构版 API 文档
+    - 管理员端: `/admin/api/*` (需 Bearer Token + RBAC 权限)
+    - 用户端: `/api/v1/*` (需 Bearer Token)
+
+servers:
+  - url: http://localhost:8080
+    description: 本地开发环境
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 200 }
+        message: { type: string, example: "操作成功" }
+        data: { type: object }
+        timestamp: { type: integer }
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, example: "admin" }
+        password: { type: string, example: "admin123" }
+
+    LoginResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                user: { $ref: '#/components/schemas/AdminUser' }
+                tokens:
+                  type: object
+                  properties:
+                    access_token: { type: string }
+                    refresh_token: { type: string }
+                    expires_in: { type: integer, example: 7200 }
+
+    AdminUser:
+      type: object
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        nickname: { type: string }
+        role_id: { type: integer }
+
+    PayChannel:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        code: { type: string }
+        app_id: { type: string }
+        status: { type: integer }
+        created_at: { type: string, format: date-time }
+
+    RechargePackage:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string, example: "100点数" }
+        amount: { type: string, example: "10.00" }
+        points: { type: integer, example: 100 }
+        bonus_points: { type: integer }
+        is_hot: { type: integer }
+        status: { type: integer }
+
+    Software:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        category_id: { type: integer }
+        type_id: { type: integer }
+        summary: { type: string }
+        download_url: { type: string }
+        points: { type: integer }
+        status: { type: integer }
+
+    Category:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        parent_id: { type: integer }
+        children: { type: array, items: { $ref: '#/components/schemas/Category' } }
+
+    ReportSummary:
+      type: object
+      properties:
+        total_amount: { type: number }
+        total_orders: { type: integer }
+        today_amount: { type: number }
+        today_orders: { type: integer }
+
+paths:
+  # ── 认证 ──
+  /admin/api/auth/login:
+    post:
+      tags: [认证]
+      summary: 管理员登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '429':
+          description: 频率限制 (10次/分钟)
+
+  /admin/api/auth/me:
+    get:
+      tags: [认证]
+      summary: 获取当前管理员信息
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/AdminUser' }
+
+  # ── 支付渠道 ──
+  /admin/api/pay/channels:
+    get:
+      tags: [支付渠道]
+      summary: 渠道列表
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/PayChannel' }
+    post:
+      tags: [支付渠道]
+      summary: 创建渠道
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, code]
+              properties:
+                name: { type: string }
+                code: { type: string, pattern: '^[a-zA-Z]+$' }
+                app_id: { type: string }
+                api_key: { type: string }
+      responses:
+        '200': { description: 创建成功 }
+
+  /admin/api/pay/channels/{id}:
+    put:
+      tags: [支付渠道]
+      summary: 更新渠道
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: 更新成功 }
+    delete:
+      tags: [支付渠道]
+      summary: 删除渠道
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: 删除成功 }
+
+  # ── 充值套餐 ──
+  /admin/api/pay/packages:
+    get:
+      tags: [充值套餐]
+      summary: 套餐列表
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/RechargePackage' }
+    post:
+      tags: [充值套餐]
+      summary: 创建套餐
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, amount, points]
+              properties:
+                name: { type: string }
+                amount: { type: number }
+                points: { type: integer }
+                bonus_points: { type: integer }
+      responses:
+        '200': { description: 创建成功 }
+
+  /admin/api/pay/packages/{id}:
+    put:
+      tags: [充值套餐]
+      summary: 更新套餐
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: 更新成功 }
+    delete:
+      tags: [充值套餐]
+      summary: 删除套餐
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: 删除成功 }
+
+  # ── 报表 ──
+  /admin/api/report/summary:
+    get:
+      tags: [报表统计]
+      summary: 充值汇总卡片
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/ReportSummary' }
+
+  /admin/api/report/trend:
+    get:
+      tags: [报表统计]
+      summary: 充值趋势 (最近N天)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: days
+          in: query
+          schema: { type: integer, default: 30, minimum: 7, maximum: 90 }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          dates: { type: array, items: { type: string } }
+                          amounts: { type: array, items: { type: number } }
+
+  # ── 软件管理 ──
+  /admin/api/software:
+    get:
+      tags: [软件管理]
+      summary: 软件列表
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: 成功 }
+    post:
+      tags: [软件管理]
+      summary: 创建软件
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, category_id]
+              properties:
+                name: { type: string }
+                category_id: { type: integer }
+                type_id: { type: integer }
+                summary: { type: string }
+                download_url: { type: string }
+                points: { type: integer }
+      responses:
+        '200': { description: 创建成功 }
+
+  # ── 日志管理 ──
+  /admin/api/logs/operation:
+    get:
+      tags: [日志管理]
+      summary: 操作日志列表
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: module
+          in: query
+          schema: { type: string }
+        - name: admin_id
+          in: query
+          schema: { type: integer }
+      responses:
+        '200': { description: 成功 }
+
+  /admin/api/logs/login:
+    get:
+      tags: [日志管理]
+      summary: 登录日志列表
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: page_size
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: username
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { description: 成功 }
+
+  /admin/api/logs/stats:
+    get:
+      tags: [日志管理]
+      summary: 日志统计概览
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          today_operations: { type: integer }
+                          today_logins: { type: integer }
+                          total_operations: { type: integer }
+
+  # ── 分类管理 ──
+  /admin/api/categories:
+    get:
+      tags: [分类管理]
+      summary: 分类树
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Category' }
+    post:
+      tags: [分类管理]
+      summary: 创建分类
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: 成功 }
+
+  # ── RBAC ──
+  /admin/api/roles:
+    get:
+      tags: [权限管理]
+      summary: 角色列表
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: 成功 }
+    post:
+      tags: [权限管理]
+      summary: 创建角色
+      security: [{ BearerAuth: [] }]
+      responses:
+        '200': { description: 成功 }
+
+  # ── 用户端 ──
+  /api/v1/auth/login:
+    post:
+      tags: [用户端-认证]
+      summary: 用户登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200': { description: 登录成功 }
+
+  /api/v1/search:
+    get:
+      tags: [用户端-搜索]
+      summary: 全站搜索
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: 搜索结果 }
+
+tags:
+  - name: 认证
+    description: 管理员/用户登录与Token管理
+  - name: 支付渠道
+    description: 支付宝/微信支付配置管理
+  - name: 充值套餐
+    description: 充值套餐CRUD
+  - name: 报表统计
+    description: 充值趋势/渠道占比/套餐排行
+  - name: 软件管理
+    description: 下载资源CRUD + 审核
+  - name: 分类管理
+    description: 无限级分类树
+  - name: 权限管理
+    description: RBAC角色与管理员管理
+  - name: 日志管理
+    description: 操作日志与登录日志查询
+  - name: 用户端-认证
+    description: 用户注册/登录
+  - name: 用户端-搜索
+    description: 全站软件搜索

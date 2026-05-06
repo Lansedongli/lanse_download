@@ -1,0 +1,38 @@
+# 帝国下载系统 .gitignore
+
+# === 依赖 ===
+vendor/
+node_modules/
+
+# === 运行时 ===
+runtime/
+*.log
+.env
+!.env.example
+
+# === 上传/缓存 ===
+public/uploads/*
+!public/uploads/.gitkeep
+public/html/*
+!public/html/.gitkeep
+
+# === 前端构建产物 ===
+admin-frontend/dist/
+user-frontend/dist/
+
+# === IDE ===
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Docker ===
+mysql_data/
+
+# === 测试覆盖率 ===
+coverage/
+runtime/coverage/
