@@ -704,4 +704,8 @@ INSERT INTO `user` (`username`, `password`, `nickname`, `group_id`, `points`, `s
 INSERT INTO `user_group` (`name`, `code`, `level`, `max_download_day`) VALUES
 ('普通会员', 'normal', 1, 10);
 
+INSERT INTO `pay_channels` (`name`, `code`, `app_id`, `mch_id`, `api_key`, `status`, `sort_order`, `remark`) VALUES
+('支付宝', 'alipay', 'app_test_2026010100000001', 'mch_test_alipay_001', 'test_alipay_key_32chars_xxxxx', 1, 1, '支付宝支付渠道(测试)'),
+('微信支付', 'wechat', 'wx_test_2026010100000001', 'mch_test_wechat_001', 'test_wechat_key_32chars_xxxxx', 1, 2, '微信支付渠道(测试)');
+
 SET FOREIGN_KEY_CHECKS = 1;
