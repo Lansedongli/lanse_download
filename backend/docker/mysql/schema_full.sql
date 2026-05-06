@@ -701,7 +701,7 @@ INSERT INTO `admin_user` (`username`, `password`, `nickname`, `role_id`, `status
 INSERT INTO `user` (`username`, `password`, `nickname`, `group_id`, `points`, `status`) VALUES
 ('testuser', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '测试用户', 1, 100, 1);
 
-INSERT INTO `user_group` (`name`, `level`, `max_download_day`) VALUES
-('普通会员', 1, 10);
+INSERT INTO `user_group` (`name`, `code`, `level`, `max_download_day`) VALUES
+('普通会员', 'normal', 1, 10);
 
 SET FOREIGN_KEY_CHECKS = 1;
