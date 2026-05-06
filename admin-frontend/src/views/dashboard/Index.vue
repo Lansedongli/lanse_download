@@ -114,8 +114,8 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { getSoftwareList } from '@/api/software'
-import { getUsers } from '@/api/user'
+import { getList as getSoftwareList } from '@/api/software'
+import { getList as getUsers } from '@/api/user'
 import { getReportSummary } from '@/api/payment'
 
 const auth = useAuthStore()
