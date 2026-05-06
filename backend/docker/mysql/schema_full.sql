@@ -696,10 +696,10 @@ INSERT INTO `role` (`name`, `code`, `description`, `permissions`, `status`, `sor
 ('内容编辑', 'editor', '内容编辑权限', '["software:list","software:create","software:update","category:list"]', 1, 0);
 
 INSERT INTO `admin_user` (`username`, `password`, `nickname`, `role_id`, `status`) VALUES
-('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '系统管理员', 1, 1);
+('admin', '$2y$10$4s3B2VekbdZ2TR244NTwPO/yE6k62K6B799FMmxIwzPJHEju7NrYa', '系统管理员', 1, 1);
 
 INSERT INTO `user` (`username`, `password`, `nickname`, `group_id`, `points`, `status`) VALUES
-('testuser', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '测试用户', 1, 100, 1);
+('testuser', '$2y$10$gj/l4DrwFMU/3aOrYytBLOthwVPl/JoUFlpUTLkajyG2luE49Hh0C', '测试用户', 1, 100, 1);
 
 INSERT INTO `user_group` (`name`, `code`, `level`, `max_download_day`) VALUES
 ('普通会员', 'normal', 1, 10);
