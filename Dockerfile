@@ -47,6 +47,10 @@ COPY docker/php/php.ini /usr/local/etc/php/conf.d/edown.ini
 # Supervisor 配置
 COPY docker/supervisord.conf /etc/supervisord.conf
 
+# 入口点脚本（修复权限）
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 EXPOSE 9000
 
-CMD ["supervisord", "-c", "/etc/supervisord.conf"]
+ENTRYPOINT ["/entrypoint.sh"]
