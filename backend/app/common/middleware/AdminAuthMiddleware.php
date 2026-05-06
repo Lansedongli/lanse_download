@@ -31,7 +31,7 @@ class AdminAuthMiddleware
         }
 
         $request->admin = [
-            'id'       => $payload['user_id'] ?? 0,
+            'id'       => $payload['id'] ?? $payload['user_id'] ?? 0,
             'username' => $payload['username'] ?? '',
             'role_id'  => $payload['role_id'] ?? 0,
         ];
@@ -68,6 +68,11 @@ class AdminAuthMiddleware
             if (str_contains($path, $w)) {
                 return true;
             }
+        }
+
+        // 超级管理员 (role_id=1) 直接放行，无需查表
+        if ($roleId == 1) {
+            return true;
         }
 
         // 查角色权限
