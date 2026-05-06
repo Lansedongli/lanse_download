@@ -61,6 +61,15 @@ class AdminAuthMiddleware
             return false;
         }
 
+        // 白名单：无需权限校验的路径
+        $path = $request->pathinfo();
+        $whitelist = ['auth/me', 'auth/logout'];
+        foreach ($whitelist as $w) {
+            if (str_contains($path, $w)) {
+                return true;
+            }
+        }
+
         // 查角色权限
         $role = Db::table('role')->where('id', $roleId)->where('status', 1)->find();
         if (!$role) {
